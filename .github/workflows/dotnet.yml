@@ -17,11 +17,9 @@ jobs:
       uses: actions/setup-dotnet@v2
       with:
         dotnet-version: 6.0.x
-    - name: Move into project folder
-      run: cd SteamQueryNet
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore SteamQueryNet
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore SteamQueryNet
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --no-build --verbosity normal SteamQueryNet
