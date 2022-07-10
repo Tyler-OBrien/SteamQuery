@@ -1,7 +1,8 @@
 ﻿using System;
 
-namespace SteamQueryNet.Attributes
+namespace SteamQueryNet.Attributes;
+
+[AttributeUsage(AttributeTargets.Property)]
+internal sealed class ParseCustomAttribute : Attribute
 {
-	[AttributeUsage(AttributeTargets.Property)]
-	internal sealed class ParseCustomAttribute : Attribute { }
 }

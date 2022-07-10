@@ -1,8 +1,7 @@
-﻿namespace SteamQueryNet.Enums
+﻿namespace SteamQueryNet.Enums;
+
+public enum Visibility : byte
 {
-	public enum Visibility : byte
-	{
-		Public = 0,
-		Private = 1
-	}
+    Public = 0,
+    Private = 1
 }

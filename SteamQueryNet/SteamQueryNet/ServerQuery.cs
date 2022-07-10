@@ -1,312 +1,290 @@
-﻿using SteamQueryNet.Interfaces;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
+using SteamQueryNet.Interfaces;
 using SteamQueryNet.Models;
 using SteamQueryNet.Services;
 using SteamQueryNet.Utils;
 
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
+[assembly: InternalsVisibleTo("SteamQueryNet.Tests")]
 
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SteamQueryNet.Tests")]
-namespace SteamQueryNet
+namespace SteamQueryNet;
+
+public class ServerQuery : IServerQuery, IDisposable
 {
-	public class ServerQuery : IServerQuery, IDisposable
-	{
-		private IPEndPoint m_remoteIpEndpoint;
+    private int m_currentChallenge;
 
-		private ushort m_port;
-		private int m_currentChallenge;
+    private ushort m_port;
+    private IPEndPoint m_remoteIpEndpoint;
 
-		internal virtual IUdpClient UdpClient { get; private set; }
+    /// <summary>
+    ///     Creates a new instance of ServerQuery with given UDPClient and remote endpoint.
+    /// </summary>
+    /// <param name="udpClient">UdpClient to communicate.</param>
+    /// <param name="remoteEndpoint">Remote server endpoint.</param>
+    public ServerQuery(IUdpClient udpClient, IPEndPoint remoteEndpoint)
+    {
+        UdpClient = udpClient;
+        m_remoteIpEndpoint = remoteEndpoint;
+    }
 
-		/// <summary>
-		/// Reflects the udp client connection state.
-		/// </summary>
-		public bool IsConnected => UdpClient.IsConnected;
+    /// <summary>
+    ///     Creates a new instance of ServerQuery without UDP socket connection.
+    /// </summary>
+    public ServerQuery()
+    {
+    }
 
-		/// <summary>
-		/// Amount of time in milliseconds to terminate send operation if the server won't respond.
-		/// </summary>
-		public int SendTimeout { get; set; }
+    internal virtual IUdpClient UdpClient { get; private set; }
 
-		/// <summary>
-		/// Amount of time in milliseconds to terminate receive operation if the server won't respond.
-		/// </summary>
-		public int ReceiveTimeout { get; set; }
+    /// <summary>
+    ///     Reflects the udp client connection state.
+    /// </summary>
+    public bool IsConnected => UdpClient.IsConnected;
 
-		/// <summary>
-		/// Creates a new instance of ServerQuery with given UDPClient and remote endpoint.
-		/// </summary>
-		/// <param name="udpClient">UdpClient to communicate.</param>
-		/// <param name="remoteEndpoint">Remote server endpoint.</param>
-		public ServerQuery(IUdpClient udpClient, IPEndPoint remoteEndpoint)
-		{
-			UdpClient = udpClient;
-			m_remoteIpEndpoint = remoteEndpoint;
-		}
+    /// <summary>
+    ///     Amount of time in milliseconds to terminate send operation if the server won't respond.
+    /// </summary>
+    public int SendTimeout { get; set; }
 
-		/// <summary>
-		/// Creates a new instance of ServerQuery without UDP socket connection.
-		/// </summary>
-		public ServerQuery() { }
+    /// <summary>
+    ///     Amount of time in milliseconds to terminate receive operation if the server won't respond.
+    /// </summary>
+    public int ReceiveTimeout { get; set; }
 
-		/// <summary>
-		/// Creates a new ServerQuery instance for Steam Server Query Operations.
-		/// </summary>
-		/// <param name="serverAddress">IPAddress or HostName of the server that queries will be sent.</param>
-		/// <param name="port">Port of the server that queries will be sent.</param>
-		public IServerQuery Connect(string serverAddress, ushort port)
-		{
-			PrepareAndConnect(serverAddress, port);
-			return this;
-		}
+    /// <summary>
+    ///     Disposes the object and its disposables.
+    /// </summary>
+    public void Dispose()
+    {
+        UdpClient.Close();
+        UdpClient.Dispose();
+    }
 
-		/// <summary>
-		/// Creates a new ServerQuery instance for Steam Server Query Operations.
-		/// </summary>
-		/// <param name="serverAddressAndPort">IPAddress or HostName of the server and port separated by a colon(:) or a comma(,).</param>
-		public IServerQuery Connect(string serverAddressAndPort)
-		{
-			(string serverAddress, ushort port) = Helpers.ResolveIPAndPortFromString(serverAddressAndPort);
-			PrepareAndConnect(serverAddress, port);
-			return this;
-		}
+    /// <summary>
+    ///     Creates a new ServerQuery instance for Steam Server Query Operations.
+    /// </summary>
+    /// <param name="serverAddress">IPAddress or HostName of the server that queries will be sent.</param>
+    /// <param name="port">Port of the server that queries will be sent.</param>
+    public IServerQuery Connect(string serverAddress, ushort port)
+    {
+        PrepareAndConnect(serverAddress, port);
+        return this;
+    }
 
-		/// <summary>
-		/// Creates a new instance of ServerQuery with the given Local IPEndpoint.
-		/// </summary>
-		/// <param name="customLocalIPEndpoint">Desired local IPEndpoint to bound.</param>
-		/// <param name="serverAddressAndPort">IPAddress or HostName of the server and port separated by a colon(:) or a comma(,).</param>
-		public IServerQuery Connect(IPEndPoint customLocalIPEndpoint, string serverAddressAndPort)
-		{
-			UdpClient = new UdpWrapper(customLocalIPEndpoint, SendTimeout, ReceiveTimeout);
-			(string serverAddress, ushort port) = Helpers.ResolveIPAndPortFromString(serverAddressAndPort);
-			PrepareAndConnect(serverAddress, port);
-			return this;
-		}
+    /// <summary>
+    ///     Creates a new ServerQuery instance for Steam Server Query Operations.
+    /// </summary>
+    /// <param name="serverAddressAndPort">IPAddress or HostName of the server and port separated by a colon(:) or a comma(,).</param>
+    public IServerQuery Connect(string serverAddressAndPort)
+    {
+        (var serverAddress, var port) = Helpers.ResolveIPAndPortFromString(serverAddressAndPort);
+        PrepareAndConnect(serverAddress, port);
+        return this;
+    }
 
-		/// <summary>
-		/// Creates a new instance of ServerQuery with the given Local IPEndpoint.
-		/// </summary>
-		/// <param name="customLocalIPEndpoint">Desired local IPEndpoint to bound.</param>
-		/// <param name="serverAddress">IPAddress or HostName of the server that queries will be sent.</param>
-		/// <param name="port">Port of the server that queries will be sent.</param>
-		public IServerQuery Connect(IPEndPoint customLocalIPEndpoint, string serverAddress, ushort port)
-		{
-			UdpClient = new UdpWrapper(customLocalIPEndpoint, SendTimeout, ReceiveTimeout);
-			PrepareAndConnect(serverAddress, port);
-			return this;
-		}
+    /// <summary>
+    ///     Creates a new instance of ServerQuery with the given Local IPEndpoint.
+    /// </summary>
+    /// <param name="customLocalIPEndpoint">Desired local IPEndpoint to bound.</param>
+    /// <param name="serverAddressAndPort">IPAddress or HostName of the server and port separated by a colon(:) or a comma(,).</param>
+    public IServerQuery Connect(IPEndPoint customLocalIPEndpoint, string serverAddressAndPort)
+    {
+        UdpClient = new UdpWrapper(customLocalIPEndpoint, SendTimeout, ReceiveTimeout);
+        (var serverAddress, var port) = Helpers.ResolveIPAndPortFromString(serverAddressAndPort);
+        PrepareAndConnect(serverAddress, port);
+        return this;
+    }
+
+    /// <summary>
+    ///     Creates a new instance of ServerQuery with the given Local IPEndpoint.
+    /// </summary>
+    /// <param name="customLocalIPEndpoint">Desired local IPEndpoint to bound.</param>
+    /// <param name="serverAddress">IPAddress or HostName of the server that queries will be sent.</param>
+    /// <param name="port">Port of the server that queries will be sent.</param>
+    public IServerQuery Connect(IPEndPoint customLocalIPEndpoint, string serverAddress, ushort port)
+    {
+        UdpClient = new UdpWrapper(customLocalIPEndpoint, SendTimeout, ReceiveTimeout);
+        PrepareAndConnect(serverAddress, port);
+        return this;
+    }
 
 
+    /// <inheritdoc />
+    public Task<ServerInfo> GetServerInfoAsync()
+    {
+        return GetServerInfoAsync(CancellationToken.None);
+    }
 
-        /// <inheritdoc/>
-        public Task<ServerInfo> GetServerInfoAsync() => GetServerInfoAsync(CancellationToken.None);
+    /// <inheritdoc />
+    /// <inheritdoc />
+    public async Task<ServerInfo> GetServerInfoAsync(CancellationToken token)
+    {
+        var sInfo = new ServerInfo();
 
-		/// <inheritdoc/>
-        /// <inheritdoc/>
-        public async Task<ServerInfo> GetServerInfoAsync(CancellationToken token)
+
+        var response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(), token);
+        var tryGetHeader = response.Skip(4).First();
+        // A Challenge!
+        if (tryGetHeader == RequestHeaders.S2C_CHALLENGE)
         {
-            var sInfo = new ServerInfo
-            {
-            };
-
-
-			byte[] response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(), token);
-            var tryGetHeader = response.Skip(4).First();
-			// A Challenge!
-            if (tryGetHeader == RequestHeaders.S2C_CHALLENGE)
-            {
-                var challenge = response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).ToArray();
-				// Now we got the challenge! Send it back!
-                response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(challenge), token);
-            }
+            var challenge = response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).ToArray();
+            // Now we got the challenge! Send it back!
+            response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(challenge), token);
+        }
 #if DEBUG
-            tryGetHeader = response.Skip(4).First();
-            if (tryGetHeader != RequestHeaders.S2C_Response)
-            {
-				Console.WriteLine($"Something strange.. we expected 0x49 (I) aka 73 in decimal, but we got {tryGetHeader}");
-            }
+        tryGetHeader = response.Skip(4).First();
+        if (tryGetHeader != RequestHeaders.S2C_Response)
+            Console.WriteLine($"Something strange.. we expected 0x49 (I) aka 73 in decimal, but we got {tryGetHeader}");
 #endif
 
 
-			if (response.Length > 0)
+        if (response.Length > 0) DataResolutionUtils.ExtractData(sInfo, response, nameof(sInfo.EDF), true);
+
+        return sInfo;
+    }
+
+    /// <inheritdoc />
+    public ServerInfo GetServerInfo()
+    {
+        var task = GetServerInfoAsync(CancellationToken.None);
+        if (task.IsCompleted == false)
+            task.RunSynchronously();
+        return task.Result;
+        // return Helpers.RunSync(GetServerInfoAsync);
+    }
+
+
+    /// <inheritdoc />
+    public Task<int> RenewChallengeAsync()
+    {
+        return RenewChallengeAsync(CancellationToken.None);
+    }
+
+
+    /// <inheritdoc />
+    public async Task<int> RenewChallengeAsync(CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync(RequestHelpers.PrepareAS2_RENEW_CHALLENGE_Request(), cancellationToken);
+        if (response.Length > 0)
+            m_currentChallenge =
+                BitConverter.ToInt32(response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
+                    0);
+
+
+        return m_currentChallenge;
+    }
+
+
+    /// <inheritdoc />
+    public int RenewChallenge()
+    {
+        var task = RenewChallengeAsync(CancellationToken.None);
+        if (task.IsCompleted == false)
+            task.RunSynchronously();
+        return task.Result;
+        // return Helpers.RunSync(RenewChallengeAsync);
+    }
+
+
+    /// <inheritdoc />
+    public Task<List<Player>> GetPlayersAsync()
+    {
+        return GetPlayersAsync(CancellationToken.None);
+    }
+
+
+    /// <inheritdoc />
+    public async Task<List<Player>> GetPlayersAsync(CancellationToken cancellationToken)
+    {
+        if (m_currentChallenge == 0) await RenewChallengeAsync(cancellationToken);
+
+        var response = await SendRequestAsync(
+            RequestHelpers.PrepareAS2_GENERIC_Request(RequestHeaders.A2S_PLAYER, m_currentChallenge),
+            cancellationToken);
+
+        if (response.Length > 0)
+            return DataResolutionUtils.ExtractPlayersData<Player>(response);
+        throw new InvalidOperationException("Server did not response the query");
+    }
+
+    /// <inheritdoc />
+    public List<Player> GetPlayers()
+    {
+        var task = GetPlayersAsync();
+        if (task.IsCompleted == false)
+            task.RunSynchronously();
+        return task.Result;
+        // return Helpers.RunSync(GetPlayersAsync);
+    }
+
+
+    /// <inheritdoc />
+    public Task<List<Rule>> GetRulesAsync()
+    {
+        return GetRulesAsync(CancellationToken.None);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<Rule>> GetRulesAsync(CancellationToken cancellationToken)
+    {
+        if (m_currentChallenge == 0) await RenewChallengeAsync(cancellationToken);
+
+        var response = await SendRequestAsync(
+            RequestHelpers.PrepareAS2_GENERIC_Request(RequestHeaders.A2S_RULES, m_currentChallenge),
+            cancellationToken);
+        if (response.Length > 0)
+            return DataResolutionUtils.ExtractRulesData<Rule>(response);
+        throw new InvalidOperationException("Server did not response the query");
+    }
+
+    /// <inheritdoc />
+    public List<Rule> GetRules()
+    {
+        var task = GetRulesAsync(CancellationToken.None);
+        if (task.IsCompleted == false)
+            task.RunSynchronously();
+        return task.Result;
+        // return Helpers.RunSync(GetRulesAsync);
+    }
+
+    private void PrepareAndConnect(string serverAddress, ushort port)
+    {
+        m_port = port;
+
+        // Try to parse the serverAddress as IP first
+        if (IPAddress.TryParse(serverAddress, out var parsedIpAddress))
+            // Yep its an IP.
+            m_remoteIpEndpoint = new IPEndPoint(parsedIpAddress, m_port);
+        else
+            // Nope it might be a hostname.
+            try
             {
-                DataResolutionUtils.ExtractData(sInfo, response, nameof(sInfo.EDF), true);
+                var addressList = Dns.GetHostAddresses(serverAddress);
+                if (addressList.Length > 0)
+                    // We get the first address.
+                    m_remoteIpEndpoint = new IPEndPoint(addressList[0], m_port);
+                else
+                    throw new ArgumentException($"Invalid host address {serverAddress}");
             }
-
-            return sInfo;
-        }
-
-		/// <inheritdoc/>
-		public ServerInfo GetServerInfo()
-		{
-			Task<ServerInfo> task = GetServerInfoAsync(CancellationToken.None);
-			if (task.IsCompleted == false) 
-			    task.RunSynchronously();
-			return task.Result;
-			// return Helpers.RunSync(GetServerInfoAsync);
-		}
-
-
-        /// <inheritdoc/>
-        public Task<int> RenewChallengeAsync() => RenewChallengeAsync(CancellationToken.None);
-
-
-		/// <inheritdoc/>
-		public async Task<int> RenewChallengeAsync(CancellationToken cancellationToken)
-		{
-			byte[] response = await SendRequestAsync(RequestHelpers.PrepareAS2_RENEW_CHALLENGE_Request(), cancellationToken);
-			if (response.Length > 0)
-			{
-				m_currentChallenge = BitConverter.ToInt32(response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(), 0);
-			}
-
-
-
-			return m_currentChallenge;
-		}
-
-
-
-		/// <inheritdoc/>
-		public int RenewChallenge()
-		{
-			Task<int> task = RenewChallengeAsync(CancellationToken.None);
-			if (task.IsCompleted == false)
-			    task.RunSynchronously();
-			return task.Result;
-			// return Helpers.RunSync(RenewChallengeAsync);
-		}
-
-
-        /// <inheritdoc/>
-        public Task<List<Player>> GetPlayersAsync() => GetPlayersAsync(CancellationToken.None);
-
-
-
-		/// <inheritdoc/>
-		public async Task<List<Player>> GetPlayersAsync(CancellationToken cancellationToken)
-		{
-            if (m_currentChallenge == 0)
+            catch (SocketException ex)
             {
-                await RenewChallengeAsync(cancellationToken);
+                throw new ArgumentException("Could not reach the hostname.", ex);
             }
 
-            byte[] response = await SendRequestAsync(
-                RequestHelpers.PrepareAS2_GENERIC_Request(RequestHeaders.A2S_PLAYER, m_currentChallenge), cancellationToken);
+        UdpClient ??= new UdpWrapper(new IPEndPoint(IPAddress.Any, 0), SendTimeout, ReceiveTimeout);
+        UdpClient.Connect(m_remoteIpEndpoint);
+    }
 
-            if (response.Length > 0)
-            {
-                return DataResolutionUtils.ExtractPlayersData<Player>(response);
-            }
-            else
-            {
-                throw new InvalidOperationException("Server did not response the query");
-            }
-		}
-
-		/// <inheritdoc/>
-		public List<Player> GetPlayers()
-		{
-			Task<List<Player>> task = GetPlayersAsync();
-			if (task.IsCompleted == false)
-			    task.RunSynchronously();
-			return task.Result;
-			// return Helpers.RunSync(GetPlayersAsync);
-		}
-
-
-        /// <inheritdoc/>
-        public Task<List<Rule>> GetRulesAsync() => GetRulesAsync(CancellationToken.None);
-
-		/// <inheritdoc/>
-		public async Task<List<Rule>> GetRulesAsync(CancellationToken cancellationToken)
-		{
-			if (m_currentChallenge == 0)
-			{
-				await RenewChallengeAsync(cancellationToken);
-			}
-
-			byte[] response = await SendRequestAsync(
-				RequestHelpers.PrepareAS2_GENERIC_Request(RequestHeaders.A2S_RULES, m_currentChallenge),
-				cancellationToken);
-			if (response.Length > 0)
-			{
-                return DataResolutionUtils.ExtractRulesData<Rule>(response);
-            }
-			else
-			{
-				throw new InvalidOperationException("Server did not response the query");
-			}
-		}
-
-		/// <inheritdoc/>
-		public List<Rule> GetRules()
-		{
-			Task<List<Rule>> task = GetRulesAsync(CancellationToken.None);
-			if (task.IsCompleted == false)
-			    task.RunSynchronously();
-			return task.Result;
-			// return Helpers.RunSync(GetRulesAsync);
-		}
-
-		/// <summary>
-		/// Disposes the object and its disposables.
-		/// </summary>
-		public void Dispose()
-		{
-			UdpClient.Close();
-			UdpClient.Dispose();
-		}
-
-		private void PrepareAndConnect(string serverAddress, ushort port)
-		{
-			m_port = port;
-
-			// Try to parse the serverAddress as IP first
-			if (IPAddress.TryParse(serverAddress, out IPAddress parsedIpAddress))
-			{
-				// Yep its an IP.
-				m_remoteIpEndpoint = new IPEndPoint(parsedIpAddress, m_port);
-			}
-			else
-			{
-				// Nope it might be a hostname.
-				try
-				{
-					IPAddress[] addressList = Dns.GetHostAddresses(serverAddress);
-					if (addressList.Length > 0)
-					{
-						// We get the first address.
-						m_remoteIpEndpoint = new IPEndPoint(addressList[0], m_port);
-					}
-					else
-					{
-						throw new ArgumentException($"Invalid host address {serverAddress}");
-					}
-				}
-				catch (SocketException ex)
-				{
-					throw new ArgumentException("Could not reach the hostname.", ex);
-				}
-			}
-
-			UdpClient ??= new UdpWrapper(new IPEndPoint(IPAddress.Any, 0), SendTimeout, ReceiveTimeout);
-			UdpClient.Connect(m_remoteIpEndpoint);
-		}
-
-		private async Task<byte[]> SendRequestAsync(byte[] request, CancellationToken cancellationToken)
-		{
-			await UdpClient.SendAsync(request, cancellationToken);
-			UdpReceiveResult result = await UdpClient.ReceiveAsync(cancellationToken);
-			return result.Buffer;
-		}
-	}
+    private async Task<byte[]> SendRequestAsync(byte[] request, CancellationToken cancellationToken)
+    {
+        await UdpClient.SendAsync(request, cancellationToken);
+        var result = await UdpClient.ReceiveAsync(cancellationToken);
+        return result.Buffer;
+    }
 }

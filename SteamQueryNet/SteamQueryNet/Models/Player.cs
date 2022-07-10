@@ -1,55 +1,52 @@
-﻿using SteamQueryNet.Attributes;
+﻿using System;
+using SteamQueryNet.Attributes;
 
-using System;
+namespace SteamQueryNet.Models;
 
-namespace SteamQueryNet.Models
+public class Player
 {
-	public class Player
-	{
-		/// <summary>
-		/// Index of player chunk starting from 0.
-		/// </summary>
-		public byte Index { get; set; }
+    /// <summary>
+    ///     Index of player chunk starting from 0.
+    /// </summary>
+    public byte Index { get; set; }
 
-		/// <summary>
-		/// Name of the player.
-		/// </summary>
-		public string Name { get; set; }
+    /// <summary>
+    ///     Name of the player.
+    /// </summary>
+    public string Name { get; set; }
 
-		/// <summary>
-		/// Player's score (usually "frags" or "kills".)
-		/// </summary>
-		public int Score { get; set; }
+    /// <summary>
+    ///     Player's score (usually "frags" or "kills".)
+    /// </summary>
+    public int Score { get; set; }
 
-		/// <summary>
-		/// Time (in seconds) player has been connected to the server.
-		/// </summary>
-		public float Duration { get; set; }
+    /// <summary>
+    ///     Time (in seconds) player has been connected to the server.
+    /// </summary>
+    public float Duration { get; set; }
 
-		/// <summary>
-		/// Total time as Hours:Minutes:Seconds format.
-		/// </summary>
-		[NotParsable]
-		public string TotalDurationAsString
-		{
-			get
-			{
-				TimeSpan totalSpan = TimeSpan.FromSeconds(Duration);
-				string parsedHours = totalSpan.Hours >= 10
-					? totalSpan.Hours.ToString()
-					: $"0{totalSpan.Hours}";
+    /// <summary>
+    ///     Total time as Hours:Minutes:Seconds format.
+    /// </summary>
+    [NotParsable]
+    public string TotalDurationAsString
+    {
+        get
+        {
+            var totalSpan = TimeSpan.FromSeconds(Duration);
+            var parsedHours = totalSpan.Hours >= 10
+                ? totalSpan.Hours.ToString()
+                : $"0{totalSpan.Hours}";
 
-				string parsedMinutes = totalSpan.Minutes >= 10
-					? totalSpan.Minutes.ToString()
-					: $"0{totalSpan.Minutes}";
+            var parsedMinutes = totalSpan.Minutes >= 10
+                ? totalSpan.Minutes.ToString()
+                : $"0{totalSpan.Minutes}";
 
-				string parsedSeconds = totalSpan.Seconds >= 10
-					? totalSpan.Seconds.ToString()
-					: $"0{totalSpan.Seconds}";
+            var parsedSeconds = totalSpan.Seconds >= 10
+                ? totalSpan.Seconds.ToString()
+                : $"0{totalSpan.Seconds}";
 
-				return $"{parsedHours}:{parsedMinutes}:{parsedSeconds}";
-			}
-		}
-
-	}
+            return $"{parsedHours}:{parsedMinutes}:{parsedSeconds}";
+        }
+    }
 }
