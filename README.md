@@ -2,21 +2,35 @@
 
 
 Merges:
+
 This fork merges Recieve/Send timeouts (https://github.com/cyilcode/SteamQueryNet/pull/9)
+
 Also merges a bunch of other minor changes (https://github.com/cyilcode/SteamQueryNet/pull/18), including:
+
 Adding support for cancellation tokens
+
 Moving to .NET 6
 
+
 This fork takes those two PRs, along with some other changes I made:
+
 Fixed all of the unit tests to work properly
+
 Support for A2S_Info Challenges (https://developer.valvesoftware.com/wiki/Server_queries#A2S_SERVERQUERY_GETCHALLENGE)
+
 Added integration tests against real servers
+
 Added overloads, making cancellation tokens unnecessary
+
 Default timeout is 2000 instead of 0 (and instantly failing)
 
+
 Removals:
+
 Removed Ping (unnecessary and sync)
+
 Removed The Ship Game Info / Player Details
+
 
 
 
