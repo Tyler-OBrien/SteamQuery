@@ -19,7 +19,17 @@ namespace SteamQueryNet.Interfaces
 		/// Renews the server challenge code of the ServerQuery instance in order to be able to execute further operations.
 		/// </summary>
 		/// <returns>The new created challenge.</returns>
+        Task<int> RenewChallengeAsync();
+
+
+		/// <summary>
+		/// Renews the server challenge code of the ServerQuery instance in order to be able to execute further operations.
+		/// </summary>
+        /// <returns>The new created challenge.</returns>
+
 		Task<int> RenewChallengeAsync(CancellationToken cancellationToken);
+
+
 
 		/// <summary>
 		/// Configures and Connects the created instance of SteamQuery UDP socket for Steam Server Query Operations.
@@ -59,17 +69,40 @@ namespace SteamQueryNet.Interfaces
 		/// <returns>Serialized ServerInfo instance.</returns>
 		ServerInfo GetServerInfo();
 
+
+
+
+
+
+		/// <summary>
+		/// Requests and serializes the server information.
+		/// </summary>
+        /// <returns>Serialized ServerInfo instance.</returns>
+		Task<ServerInfo> GetServerInfoAsync(CancellationToken cancellationToken);
+
+
+
 		/// <summary>
 		/// Requests and serializes the server information.
 		/// </summary>
 		/// <returns>Serialized ServerInfo instance.</returns>
-		Task<ServerInfo> GetServerInfoAsync(CancellationToken cancellationToken);
+		Task<ServerInfo> GetServerInfoAsync();
 
 		/// <summary>
 		/// Requests and serializes the list of player information. 
 		/// </summary>
 		/// <returns>Serialized list of Player instances.</returns>
 		List<Player> GetPlayers();
+
+
+
+
+
+        /// <summary>
+        /// Requests and serializes the list of player information. 
+        /// </summary>
+        /// <returns>Serialized list of Player instances.</returns>
+        Task<List<Player>> GetPlayersAsync();
 
 		/// <summary>
 		/// Requests and serializes the list of player information. 
@@ -84,6 +117,17 @@ namespace SteamQueryNet.Interfaces
 		/// </summary>
 		/// <returns>Serialized list of Rule instances.</returns>
 		List<Rule> GetRules();
+
+
+        /// <summary>
+        /// Requests and serializes the list of rules defined by the server.
+        /// Warning: CS:GO Rules reply is broken since update CSGO 1.32.3.0 (Feb 21, 2014). 
+        /// Before the update rules got truncated when exceeding MTU, after the update rules reply is not sent at all.
+        /// </summary>
+        /// <returns>Serialized list of Rule instances.</returns>
+        Task<List<Rule>> GetRulesAsync();
+
+
 
 		/// <summary>
 		/// Requests and serializes the list of rules defined by the server.

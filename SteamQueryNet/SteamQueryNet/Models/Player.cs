@@ -1,5 +1,4 @@
 ﻿using SteamQueryNet.Attributes;
-using SteamQueryNet.Models.TheShip;
 
 using System;
 
@@ -52,11 +51,5 @@ namespace SteamQueryNet.Models
 			}
 		}
 
-		/// <summary>
-		/// The Ship additional player info.
-		/// </summary>
-		/// Warning: this property information is not supported by SteamQueryNet yet.
-		[ParseCustom]
-		public ShipPlayerDetails ShipPlayerDetails { get; set; }
 	}
 }

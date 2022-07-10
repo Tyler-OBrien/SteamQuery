@@ -5,6 +5,7 @@ using SteamQueryNet.Utils;
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -103,36 +104,60 @@ namespace SteamQueryNet
 			return this;
 		}
 
+
+
+        /// <inheritdoc/>
+        public Task<ServerInfo> GetServerInfoAsync() => GetServerInfoAsync(CancellationToken.None);
+
 		/// <inheritdoc/>
-		public async Task<ServerInfo> GetServerInfoAsync(CancellationToken cancellationToken)
-		{
-			var sInfo = new ServerInfo
-			{
-				Ping = new Ping().Send(m_remoteIpEndpoint.Address)?.RoundtripTime ?? default
-			};
+        /// <inheritdoc/>
+        public async Task<ServerInfo> GetServerInfoAsync(CancellationToken token)
+        {
+            var sInfo = new ServerInfo
+            {
+            };
 
-			if (m_currentChallenge == 0)
-			{
-				await RenewChallengeAsync(cancellationToken);
-			}
 
-			byte[] response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(m_currentChallenge), cancellationToken);
+			byte[] response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(), token);
+            var tryGetHeader = response.Skip(4).First();
+			// A Challenge!
+            if (tryGetHeader == RequestHeaders.S2C_CHALLENGE)
+            {
+                var challenge = response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).ToArray();
+				// Now we got the challenge! Send it back!
+                response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(challenge), token);
+            }
+#if DEBUG
+            tryGetHeader = response.Skip(4).First();
+            if (tryGetHeader != RequestHeaders.S2C_Response)
+            {
+				Console.WriteLine($"Something strange.. we expected 0x49 (I) aka 73 in decimal, but we got {tryGetHeader}");
+            }
+#endif
+
+
 			if (response.Length > 0)
-			{
-				DataResolutionUtils.ExtractData(sInfo, response, nameof(sInfo.EDF), true);
-			}
+            {
+                DataResolutionUtils.ExtractData(sInfo, response, nameof(sInfo.EDF), true);
+            }
 
-			return sInfo;
-		}
+            return sInfo;
+        }
 
 		/// <inheritdoc/>
 		public ServerInfo GetServerInfo()
 		{
-			Task<ServerInfo> task = GetServerInfoAsync(new CancellationTokenSource().Token);
-			task.RunSynchronously();
+			Task<ServerInfo> task = GetServerInfoAsync(CancellationToken.None);
+			if (task.IsCompleted == false) 
+			    task.RunSynchronously();
 			return task.Result;
 			// return Helpers.RunSync(GetServerInfoAsync);
 		}
+
+
+        /// <inheritdoc/>
+        public Task<int> RenewChallengeAsync() => RenewChallengeAsync(CancellationToken.None);
+
 
 		/// <inheritdoc/>
 		public async Task<int> RenewChallengeAsync(CancellationToken cancellationToken)
@@ -143,48 +168,63 @@ namespace SteamQueryNet
 				m_currentChallenge = BitConverter.ToInt32(response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(), 0);
 			}
 
+
+
 			return m_currentChallenge;
 		}
+
+
 
 		/// <inheritdoc/>
 		public int RenewChallenge()
 		{
-			Task<int> task = RenewChallengeAsync(new CancellationTokenSource().Token);
-			task.RunSynchronously();
+			Task<int> task = RenewChallengeAsync(CancellationToken.None);
+			if (task.IsCompleted == false)
+			    task.RunSynchronously();
 			return task.Result;
 			// return Helpers.RunSync(RenewChallengeAsync);
 		}
 
+
+        /// <inheritdoc/>
+        public Task<List<Player>> GetPlayersAsync() => GetPlayersAsync(CancellationToken.None);
+
+
+
 		/// <inheritdoc/>
 		public async Task<List<Player>> GetPlayersAsync(CancellationToken cancellationToken)
 		{
-			if (m_currentChallenge == 0)
-			{
-				await RenewChallengeAsync(cancellationToken);
-			}
+            if (m_currentChallenge == 0)
+            {
+                await RenewChallengeAsync(cancellationToken);
+            }
 
-			byte[] response = await SendRequestAsync(
-				RequestHelpers.PrepareAS2_GENERIC_Request(RequestHeaders.A2S_PLAYER, m_currentChallenge),
-				cancellationToken);
+            byte[] response = await SendRequestAsync(
+                RequestHelpers.PrepareAS2_GENERIC_Request(RequestHeaders.A2S_PLAYER, m_currentChallenge), cancellationToken);
 
-			if (response.Length > 0)
-			{
-				return DataResolutionUtils.ExtractPlayersData<Player>(response);
-			}
-			else
-			{
-				throw new InvalidOperationException("Server did not response the query");
-			}
+            if (response.Length > 0)
+            {
+                return DataResolutionUtils.ExtractPlayersData<Player>(response);
+            }
+            else
+            {
+                throw new InvalidOperationException("Server did not response the query");
+            }
 		}
 
 		/// <inheritdoc/>
 		public List<Player> GetPlayers()
 		{
-			Task<List<Player>> task = GetPlayersAsync(new CancellationTokenSource().Token);
-			task.RunSynchronously();
+			Task<List<Player>> task = GetPlayersAsync();
+			if (task.IsCompleted == false)
+			    task.RunSynchronously();
 			return task.Result;
 			// return Helpers.RunSync(GetPlayersAsync);
 		}
+
+
+        /// <inheritdoc/>
+        public Task<List<Rule>> GetRulesAsync() => GetRulesAsync(CancellationToken.None);
 
 		/// <inheritdoc/>
 		public async Task<List<Rule>> GetRulesAsync(CancellationToken cancellationToken)
@@ -199,8 +239,8 @@ namespace SteamQueryNet
 				cancellationToken);
 			if (response.Length > 0)
 			{
-				return DataResolutionUtils.ExtractRulesData<Rule>(response);
-			}
+                return DataResolutionUtils.ExtractRulesData<Rule>(response);
+            }
 			else
 			{
 				throw new InvalidOperationException("Server did not response the query");
@@ -210,8 +250,9 @@ namespace SteamQueryNet
 		/// <inheritdoc/>
 		public List<Rule> GetRules()
 		{
-			Task<List<Rule>> task = GetRulesAsync(new CancellationTokenSource().Token);
-			task.RunSynchronously();
+			Task<List<Rule>> task = GetRulesAsync(CancellationToken.None);
+			if (task.IsCompleted == false)
+			    task.RunSynchronously();
 			return task.Result;
 			// return Helpers.RunSync(GetRulesAsync);
 		}

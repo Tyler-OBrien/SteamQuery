@@ -14,7 +14,7 @@
 
 Light
 Dependency free
-Written in .net standard 2.0 so that it works with both .NET framework 4.6+ and core.</Description>
+</Description>
     <Copyright />
     <license>https://github.com/cyilcode/SteamQueryNet/blob/master/LICENSE</license>
     <PackageProjectUrl>https://github.com/cyilcode/SteamQueryNet</PackageProjectUrl>

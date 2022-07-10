@@ -16,6 +16,12 @@ namespace SteamQueryNet.Interfaces
 
 		Task<int> SendAsync(byte[] datagram, CancellationToken cancellationToken);
 
+        Task<int> SendAsync(byte[] datagram);
+
+Task<UdpReceiveResult> ReceiveAsync();
+
+
+
 		Task<UdpReceiveResult> ReceiveAsync(CancellationToken cancellationToken);
 	}
 }

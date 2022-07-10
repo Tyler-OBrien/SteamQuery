@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -71,26 +72,26 @@ namespace SteamQueryNet.Tests
 			});
 		}
 
+        [Fact]
+        public void GetServerInfo_ShouldPopulateCorrectServerInfo()
+        {
+            (byte[] responsePacket, object responseObject) = ResponseHelper.GetValidResponse(ResponseHelper.ServerInfo);
+            var expectedObject = (ServerInfo)responseObject;
+
+            byte[][] requestPackets = new byte[][] { RequestHelpers.PrepareAS2_INFO_Request() };
+            byte[][] responsePackets = new byte[][] { responsePacket };
+
+            Mock<IUdpClient> udpClientMock = SetupReceiveResponse(responsePackets);
+            SetupRequestCompare(requestPackets, udpClientMock);
+
+            using (var sq = new ServerQuery(udpClientMock.Object, _localIpEndpoint))
+            {
+                Assert.Equal(JsonConvert.SerializeObject(expectedObject), JsonConvert.SerializeObject(sq.GetServerInfo()));
+            }
+        }
+
 		[Fact]
-		public void GetServerInfo_ShouldPopulateCorrectServerInfo()
-		{
-			(byte[] responsePacket, object responseObject) = ResponseHelper.GetValidResponse(ResponseHelper.ServerInfo);
-			var expectedObject = (ServerInfo)responseObject;
-
-			byte[][] requestPackets = new byte[][] { RequestHelpers.PrepareAS2_INFO_Request(0) };
-			byte[][] responsePackets = new byte[][] { responsePacket };
-
-			Mock<IUdpClient> udpClientMock = SetupReceiveResponse(responsePackets);
-			SetupRequestCompare(requestPackets, udpClientMock);
-
-			using (var sq = new ServerQuery(udpClientMock.Object, _localIpEndpoint))
-			{
-				Assert.Equal(JsonConvert.SerializeObject(expectedObject), JsonConvert.SerializeObject(sq.GetServerInfo()));
-			}
-		}
-
-		[Fact]
-		public void GetPlayers_ShouldPopulateCorrectPlayers()
+		public async Task GetPlayers_ShouldPopulateCorrectPlayers()
 		{
 			(byte[] playersPacket, object responseObject) = ResponseHelper.GetValidResponse(ResponseHelper.GetPlayers);
 			var expectedObject = (List<Player>)responseObject;
@@ -106,42 +107,58 @@ namespace SteamQueryNet.Tests
 			Mock<IUdpClient> udpClientMock = SetupReceiveResponse(responsePackets);
 			SetupRequestCompare(requestPackets, udpClientMock);
 
-			// Ayylmao it looks ugly as hell but we will improve it later on.
+			
 			using (var sq = new ServerQuery(udpClientMock.Object, _localIpEndpoint))
 			{
-				Assert.Equal(JsonConvert.SerializeObject(expectedObject), JsonConvert.SerializeObject(sq.GetPlayers()));
+				Assert.Equal(JsonConvert.SerializeObject(expectedObject), JsonConvert.SerializeObject(await sq.GetPlayersAsync()));
 			}
 		}
 
 		/*
-		 * We keep this test here to be able to have us a notifier when the Rules API becomes available.
+		 * We keep this test here just to test a trusted server
 		 * So, this is more like an integration test than an unit test.
-		 * If this test starts to fail, we'll know that the Rules API started to respond.
+		 * These tests are flaky, but represent real servers and the whole flow
 		 */
-		[Fact]
-		public void GetRules_ShouldThrowTimeoutException()
+        [Theory]
+		// Randomly taken from popular servers of different games
+        [InlineData("54.37.111.217:27015")]
+        [InlineData("74.91.115.81:27015")]
+        [InlineData("135.125.189.170:27015")]
+        [InlineData("142.44.169.172:2303")]
+        [InlineData("216.52.148.47:27015")]
+        [InlineData("66.55.142.18:27066")]
+        [InlineData("109.205.180.203:33915")]
+		public async Task GetServerInfo(string trustedServer)
 		{
-			// Surf Heaven rulez.
-			const string trustedServer = "steam://connect/54.37.111.217:27015";
 
-			using (var sq = new ServerQuery())
-			{
-				sq.Connect(trustedServer);
+				using (var sq = new ServerQuery())
+                {
+                    sq.ReceiveTimeout = 10000;
+                    sq.SendTimeout = 10000;
+                    sq.Connect(trustedServer);
 
-				// Make sure that the server is still alive.
-				Assert.True(sq.IsConnected);
-				bool responded = Task.WaitAll(new Task[] { sq.GetRulesAsync() }, 2000);
-				Assert.True(!responded);
-			}
-		}
+
+
+                    // Make sure that the server is still alive.
+                    Assert.True(sq.IsConnected);
+                    var getServerInfo = await sq.GetServerInfoAsync();
+                    var getPlayers = await sq.GetPlayersAsync();
+                    Assert.NotNull(getServerInfo);
+					Assert.NotNull(getPlayers);
+					Assert.True(getServerInfo.MaxPlayers > getPlayers.Count);
+
+					Assert.True(!String.IsNullOrWhiteSpace(getServerInfo.Name));
+                    Assert.NotNull(getServerInfo.ToString());
+                }
+        }
 
 		private void SetupRequestCompare(IEnumerable<byte[]> requestPackets, Mock<IUdpClient> udpClientMock)
 		{
 			udpClientMock
-				.Setup(x => x.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>()))
-				.Callback<byte[], int>((request, length) =>
+				.Setup(x => x.SendAsync(It.IsAny<byte[]>(), It.IsAny<CancellationToken>()))
+				.Callback<byte[], CancellationToken>((request, _) =>
 				{
-					Assert.True(TestValidators.CompareBytes(requestPackets.ElementAt(_packetCount), request));
+                    Assert.True(TestValidators.CompareBytes(requestPackets.ElementAt(_packetCount), request));
 					++_packetCount;
 				});
 		}
@@ -149,7 +166,7 @@ namespace SteamQueryNet.Tests
 		private Mock<IUdpClient> SetupReceiveResponse(IEnumerable<byte[]> udpPackets)
 		{
 			var udpClientMock = new Mock<IUdpClient>();
-			var setupSequence = udpClientMock.SetupSequence(x => x.ReceiveAsync());
+			var setupSequence = udpClientMock.SetupSequence(x => x.ReceiveAsync(It.IsAny<CancellationToken>()));
 			foreach (byte[] packet in udpPackets)
 			{
 				setupSequence = setupSequence.ReturnsAsync(new UdpReceiveResult(packet, _localIpEndpoint));

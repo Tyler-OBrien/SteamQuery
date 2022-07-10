@@ -1,3 +1,22 @@
+Change Log for SteamQueryNet 1.1.0 (7-10-2022)
+
+Merges:
+This fork merges Recieve/Send timeouts (https://github.com/cyilcode/SteamQueryNet/pull/9)
+Also merges a bunch of other minor changes (https://github.com/cyilcode/SteamQueryNet/pull/18), including:
+Adding support for cancellation tokens
+Moving to .NET 6
+
+This fork takes those two PRs, along with some other changes I made:
+Fixed all of the unit tests to work properly
+Support for A2S_Info Challenges (https://developer.valvesoftware.com/wiki/Server_queries#A2S_SERVERQUERY_GETCHALLENGE)
+Added integration tests against real servers
+Added overloads, making cancellation tokens unnecessary
+Default send/recv timeout is 2000 instead of 0 (and instantly failing)
+
+Removals:
+Removed Ping (unnecessary and sync)
+Removed The Ship Game Info / Player Details
+
 # Changelog for SteamQueryNet v1.0.6
 
 ### 1. Enhancements
@@ -18,8 +37,6 @@
     string myHostAndPort = "steam://connect/localhost:27015";
     ```
 * Implemented new tests for ip, hostname and port validation.
-
-* Added a CHANGELOG. LUL :)
 
 ### 2. Bug fixes
 

@@ -1,6 +1,5 @@
 ﻿using SteamQueryNet.Attributes;
 using SteamQueryNet.Enums;
-using SteamQueryNet.Models.TheShip;
 
 namespace SteamQueryNet.Models
 {
@@ -78,12 +77,6 @@ namespace SteamQueryNet.Models
 		/// </summary>
 		public VAC VAC { get; set; }
 
-		/// <summary>
-		/// This property only exist in a response if the server is running The Ship.
-		/// Warning: this property information is not supported by SteamQueryNet yet.
-		/// </summary>
-		[ParseCustom]
-		public ShipGameInfo ShipGameInfo { get; set; }
 
 		/// <summary>
 		/// Version of the game installed on the server.
@@ -132,11 +125,5 @@ namespace SteamQueryNet.Models
 		[EDF((byte)EDFFlags.GameID)]
 		public long GameID { get; set; }
 
-		/// <summary>
-		/// Calculated roundtrip time of the server.
-		/// Warning: this value will be calculated by SteamQueryNet instead of steam itself.
-		/// </summary>
-		[NotParsable]
-		public long Ping { get; set; }
 	}
 }
