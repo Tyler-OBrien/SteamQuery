@@ -11,7 +11,6 @@ using SteamQueryNet.Interfaces;
 using SteamQueryNet.Models;
 using SteamQueryNet.Tests.Responses;
 using SteamQueryNet.Utils;
-using xRetry;
 using Xunit;
 
 namespace SteamQueryNet.Tests;
@@ -73,7 +72,7 @@ public class ServerQueryTests
     [Fact]
     public void GetServerInfo_ShouldPopulateCorrectServerInfo()
     {
-        (var responsePacket, var responseObject) = ResponseHelper.GetValidResponse(ResponseHelper.ServerInfo);
+        var (responsePacket, responseObject) = ResponseHelper.GetValidResponse(ResponseHelper.ServerInfo);
         var expectedObject = (ServerInfo)responseObject;
 
         byte[][] requestPackets = { RequestHelpers.PrepareAS2_INFO_Request() };
@@ -98,15 +97,16 @@ public class ServerQueryTests
     // 0x55 (85) w/ Challenge (4 Bytes / Int) -> 0x44 (68) w/ Player Info
     public async Task GetPlayers_ShouldPopulateCorrectPlayers()
     {
-        (var playersPacket, var responseObject) = ResponseHelper.GetValidResponse(ResponseHelper.GetPlayers);
+        var (playersPacket, responseObject) = ResponseHelper.GetValidResponse(ResponseHelper.GetPlayers);
         var expectedObject = (List<Player>)responseObject;
 
-        var ChallengeSendPacket = RequestHelpers.PrepareAS2_RENEW_CHALLENGE_Request();
+        var challengeSendPacket = RequestHelpers.PrepareAS2_RENEW_CHALLENGE_Request();
 
-        var challengeResponsePacket = ChallengeSendPacket.Take(5).Concat(new byte[]{ 0x22, 0x34, 0x12, 0x9A }).ToArray();
+        var challengeResponsePacket =
+            challengeSendPacket.Take(5).Concat(new byte[] { 0x22, 0x34, 0x12, 0x9A }).ToArray();
 
         // Both requests will be executed on A2S_PLayers since thats how you refresh challenges.
-        byte[][] requestPackets = { ChallengeSendPacket.ToArray(), challengeResponsePacket.ToArray() };
+        byte[][] requestPackets = { challengeSendPacket.ToArray(), challengeResponsePacket.ToArray() };
         requestPackets[0][4] = PacketHeaders.A2S_PLAYER;
 
         // First response is the Challenge renewal response and the second 

@@ -83,7 +83,7 @@ public class ServerQuery : IServerQuery, IDisposable
     /// <param name="serverAddressAndPort">IPAddress or HostName of the server and port separated by a colon(:) or a comma(,).</param>
     public IServerQuery Connect(string serverAddressAndPort)
     {
-        (var serverAddress, var port) = Helpers.ResolveIPAndPortFromString(serverAddressAndPort);
+        var (serverAddress, port) = Helpers.ResolveIPAndPortFromString(serverAddressAndPort);
         PrepareAndConnect(serverAddress, port);
         return this;
     }
@@ -96,7 +96,7 @@ public class ServerQuery : IServerQuery, IDisposable
     public IServerQuery Connect(IPEndPoint customLocalIPEndpoint, string serverAddressAndPort)
     {
         UdpClient = new UdpWrapper(customLocalIPEndpoint, SendTimeout, ReceiveTimeout);
-        (var serverAddress, var port) = Helpers.ResolveIPAndPortFromString(serverAddressAndPort);
+        var (serverAddress, port) = Helpers.ResolveIPAndPortFromString(serverAddressAndPort);
         PrepareAndConnect(serverAddress, port);
         return this;
     }
@@ -116,7 +116,7 @@ public class ServerQuery : IServerQuery, IDisposable
 
 
     /// <inheritdoc />
-    public Task<ServerInfo> GetServerInfoAsync()
+    public Task<ServerInfo?> GetServerInfoAsync()
     {
         return GetServerInfoAsync(CancellationToken.None);
     }
@@ -131,17 +131,17 @@ public class ServerQuery : IServerQuery, IDisposable
         var response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(), token);
         var tryGetHeader = response.Skip(4).First();
         // A Challenge!
-        int retries = 0;
-        int MAX_RETRIES = 3;
+        var retries = 0;
+        var MAX_RETRIES = 3;
         // Retry for network issues or any other odd issue with challenges
         while (tryGetHeader == PacketHeaders.A2S_PLAYER_S2C_CHALLENGE && MAX_RETRIES > retries)
         {
             var challenge = response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).ToArray();
-                // Now we got the challenge! Send it back!
-                response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(challenge), token);
+            // Now we got the challenge! Send it back!
+            response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(challenge), token);
 
 
-                tryGetHeader = response.Skip(4).First();
+            tryGetHeader = response.Skip(4).First();
 #if DEBUG
             if (tryGetHeader != PacketHeaders.A2S_INFO_RESPONSE)
                 Console.WriteLine(
@@ -213,17 +213,17 @@ public class ServerQuery : IServerQuery, IDisposable
     /// <inheritdoc />
     public async Task<List<Player>?> GetPlayersAsync(CancellationToken cancellationToken)
     {
-
         var response = await SendRequestAsync(
             RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_PLAYER, -1),
             cancellationToken);
 
         var tryGetHeader = response.Skip(4).First();
-        int retries = 0;
-        int MAX_RETRIES = 3;
+        var retries = 0;
+        var MAX_RETRIES = 3;
         while (tryGetHeader == PacketHeaders.A2S_PLAYER_S2C_CHALLENGE && MAX_RETRIES > retries)
         {
-            var challenge = BitConverter.ToInt32(response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
+            var challenge = BitConverter.ToInt32(
+                response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
                 0);
 
             response = await SendRequestAsync(
@@ -236,8 +236,6 @@ public class ServerQuery : IServerQuery, IDisposable
         }
 
 
-
-
         if (tryGetHeader != PacketHeaders.A2S_PLAYER_RESPONSE)
         {
 #if DEBUG
@@ -246,13 +244,14 @@ public class ServerQuery : IServerQuery, IDisposable
 #endif
             return null;
         }
+
         if (response.Length > 0)
             return DataResolutionUtils.ExtractPlayersData<Player>(response);
         throw new InvalidOperationException("Server did not response the query");
     }
 
     /// <inheritdoc />
-    public List<Player?> GetPlayers()
+    public List<Player>? GetPlayers()
     {
         var task = GetPlayersAsync();
         if (task.IsCompleted == false)

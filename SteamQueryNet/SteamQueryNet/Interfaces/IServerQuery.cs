@@ -84,7 +84,7 @@ public interface IServerQuery
     ///     Requests and serializes the list of player information.
     /// </summary>
     /// <returns>Serialized list of Player instances.</returns>
-    List<Player?> GetPlayers();
+    List<Player>? GetPlayers();
 
 
     /// <summary>
@@ -105,7 +105,7 @@ public interface IServerQuery
     ///     Before the update rules got truncated when exceeding MTU, after the update rules reply is not sent at all.
     /// </summary>
     /// <returns>Serialized list of Rule instances.</returns>
-    List<Rule?> GetRules();
+    List<Rule>? GetRules();
 
 
     /// <summary>

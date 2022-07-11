@@ -81,7 +81,7 @@ internal sealed class DataResolutionUtils
                     : property.PropertyType;
 
                 // Extract the value and the size from the source.
-                (var result, var size) = ExtractMarshalType(enumerableSource, typeOfProperty);
+                var (result, size) = ExtractMarshalType(enumerableSource, typeOfProperty);
 
                 /* If the property is an enum we should parse it first then assign its value,
                  * if not we can just give it to SetValue since it was converted by ExtractMarshalType already.*/
