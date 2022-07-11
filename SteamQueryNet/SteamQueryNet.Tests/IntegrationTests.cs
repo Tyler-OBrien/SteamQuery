@@ -22,7 +22,6 @@ namespace SteamQueryNet.Tests
         [InlineData("54.37.111.217:27015")]
         [InlineData("74.91.115.81:27015")]
         [InlineData("135.125.189.170:27015")]
-        [InlineData("142.44.169.172:2303")]
         [InlineData("216.52.148.47:27015")]
         [InlineData("66.55.142.18:27066")]
         [InlineData("109.205.180.203:33915")]

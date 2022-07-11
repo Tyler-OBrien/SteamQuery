@@ -246,7 +246,6 @@ public class ServerQuery : IServerQuery, IDisposable
 #endif
             return null;
         }
-        Console.WriteLine($"Took {retries} retries to get header {tryGetHeader}");
         if (response.Length > 0)
             return DataResolutionUtils.ExtractPlayersData<Player>(response);
         throw new InvalidOperationException("Server did not response the query");
