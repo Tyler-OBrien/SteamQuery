@@ -14,7 +14,7 @@ using SteamQueryNet.Utils;
 [assembly: InternalsVisibleTo("SteamQueryNet.Tests")]
 
 namespace SteamQueryNet;
-
+#nullable enable
 public class ServerQuery : IServerQuery, IDisposable
 {
     private int m_currentChallenge;
@@ -123,7 +123,7 @@ public class ServerQuery : IServerQuery, IDisposable
 
     /// <inheritdoc />
     /// <inheritdoc />
-    public async Task<ServerInfo> GetServerInfoAsync(CancellationToken token)
+    public async Task<ServerInfo?> GetServerInfoAsync(CancellationToken token)
     {
         var sInfo = new ServerInfo();
 
@@ -150,6 +150,9 @@ public class ServerQuery : IServerQuery, IDisposable
             retries++;
         }
 
+        // Couldn't get response...
+        if (tryGetHeader != PacketHeaders.A2S_INFO_RESPONSE)
+            return null;
 
 
         if (response.Length > 0) DataResolutionUtils.ExtractData(sInfo, response, nameof(sInfo.EDF), true);
@@ -158,7 +161,7 @@ public class ServerQuery : IServerQuery, IDisposable
     }
 
     /// <inheritdoc />
-    public ServerInfo GetServerInfo()
+    public ServerInfo? GetServerInfo()
     {
         var task = GetServerInfoAsync(CancellationToken.None);
         if (task.IsCompleted == false)
@@ -201,21 +204,18 @@ public class ServerQuery : IServerQuery, IDisposable
 
 
     /// <inheritdoc />
-    public Task<List<Player>> GetPlayersAsync()
+    public Task<List<Player>?> GetPlayersAsync()
     {
         return GetPlayersAsync(CancellationToken.None);
     }
 
 
     /// <inheritdoc />
-    public async Task<List<Player>> GetPlayersAsync(CancellationToken cancellationToken)
+    public async Task<List<Player>?> GetPlayersAsync(CancellationToken cancellationToken)
     {
-        if (m_currentChallenge == 0) await RenewChallengeAsync(cancellationToken);
-
-        
 
         var response = await SendRequestAsync(
-            RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_PLAYER, m_currentChallenge),
+            RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_PLAYER, -1),
             cancellationToken);
 
         var tryGetHeader = response.Skip(4).First();
@@ -223,11 +223,13 @@ public class ServerQuery : IServerQuery, IDisposable
         int MAX_RETRIES = 3;
         while (tryGetHeader == PacketHeaders.A2S_PLAYER_S2C_CHALLENGE && MAX_RETRIES > retries)
         {
-            await RenewChallengeAsync(cancellationToken);
+            var challenge = BitConverter.ToInt32(response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
+                0);
 
             response = await SendRequestAsync(
-                RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_PLAYER, m_currentChallenge),
+                RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_PLAYER, challenge),
                 cancellationToken);
+
 
             tryGetHeader = response.Skip(4).First();
             retries++;
@@ -235,17 +237,23 @@ public class ServerQuery : IServerQuery, IDisposable
 
 
 
-#if DEBUG
+
         if (tryGetHeader != PacketHeaders.A2S_PLAYER_RESPONSE)
-            Console.WriteLine($"[Warning] GetPlayersAsync returned {tryGetHeader} header after challenge, instead of 0x44/D valid response.");
+        {
+#if DEBUG
+            Console.WriteLine(
+                $"[Warning] GetPlayersAsync returned {tryGetHeader} header after challenge, instead of 0x44/D valid response.");
 #endif
-            if (response.Length > 0)
+            return null;
+        }
+        Console.WriteLine($"Took {retries} retries to get header {tryGetHeader}");
+        if (response.Length > 0)
             return DataResolutionUtils.ExtractPlayersData<Player>(response);
         throw new InvalidOperationException("Server did not response the query");
     }
 
     /// <inheritdoc />
-    public List<Player> GetPlayers()
+    public List<Player?> GetPlayers()
     {
         var task = GetPlayersAsync();
         if (task.IsCompleted == false)
@@ -256,13 +264,13 @@ public class ServerQuery : IServerQuery, IDisposable
 
 
     /// <inheritdoc />
-    public Task<List<Rule>> GetRulesAsync()
+    public Task<List<Rule>?> GetRulesAsync()
     {
         return GetRulesAsync(CancellationToken.None);
     }
 
     /// <inheritdoc />
-    public async Task<List<Rule>> GetRulesAsync(CancellationToken cancellationToken)
+    public async Task<List<Rule>?> GetRulesAsync(CancellationToken cancellationToken)
     {
         if (m_currentChallenge == 0) await RenewChallengeAsync(cancellationToken);
 
@@ -275,7 +283,7 @@ public class ServerQuery : IServerQuery, IDisposable
     }
 
     /// <inheritdoc />
-    public List<Rule> GetRules()
+    public List<Rule>? GetRules()
     {
         var task = GetRulesAsync(CancellationToken.None);
         if (task.IsCompleted == false)

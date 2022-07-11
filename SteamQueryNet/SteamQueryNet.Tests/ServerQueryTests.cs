@@ -89,18 +89,30 @@ public class ServerQueryTests
     }
 
     [Fact]
+    // This had to be modified a bit from the original, because we now pay attention to the packet headers.
+    // For future reference:
+    // The packets to the server ALWAYS have a request header of 0x55 (U) aka 85 in Decimal
+    // The challenge packet from the server has a response header of 0x41 (A) aka 65
+    // The A2S_Player packet with all of the player information after confirming your challenge has a response header of 0x44 (D) aka 68 in Decimal
+    // 0x55 (85) w/ -1 -> 0x41 (65) w/ Challenge (4 Bytes / Int)
+    // 0x55 (85) w/ Challenge (4 Bytes / Int) -> 0x44 (68) w/ Player Info
     public async Task GetPlayers_ShouldPopulateCorrectPlayers()
     {
         (var playersPacket, var responseObject) = ResponseHelper.GetValidResponse(ResponseHelper.GetPlayers);
         var expectedObject = (List<Player>)responseObject;
 
-        var challengePacket = RequestHelpers.PrepareAS2_RENEW_CHALLENGE_Request();
+        var ChallengeSendPacket = RequestHelpers.PrepareAS2_RENEW_CHALLENGE_Request();
 
-        // Both requests will be executed on AS2_PLAYER since thats how you refresh challenges.
-        byte[][] requestPackets = { challengePacket, challengePacket };
+        var challengeResponsePacket = ChallengeSendPacket.Take(5).Concat(new byte[]{ 0x22, 0x34, 0x12, 0x9A }).ToArray();
+
+        // Both requests will be executed on A2S_PLayers since thats how you refresh challenges.
+        byte[][] requestPackets = { ChallengeSendPacket.ToArray(), challengeResponsePacket.ToArray() };
+        requestPackets[0][4] = PacketHeaders.A2S_PLAYER;
 
         // First response is the Challenge renewal response and the second 
-        byte[][] responsePackets = { challengePacket, playersPacket };
+        byte[][] responsePackets = { challengeResponsePacket.ToArray(), playersPacket.ToArray() };
+        // Changed from the normal Unit Test, the code expects the right response now for each challenge
+        responsePackets[0][4] = PacketHeaders.A2S_PLAYER_S2C_CHALLENGE;
 
         var udpClientMock = SetupReceiveResponse(responsePackets);
         SetupRequestCompare(requestPackets, udpClientMock);

@@ -39,8 +39,8 @@ namespace SteamQueryNet.Tests
 
                 // Make sure that the server is still alive.
                 Assert.True(sq.IsConnected);
-                var getServerInfo = await sq.GetServerInfoAsync();
                 var getPlayers = await sq.GetPlayersAsync();
+                var getServerInfo = await sq.GetServerInfoAsync();
                 Assert.NotNull(getServerInfo);
                 Assert.NotNull(getPlayers);
                 // Hacky, but there was issues with player deseralization where the GetPlayersAsync method would return a ton of fake players
