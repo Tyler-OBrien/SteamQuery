@@ -2,25 +2,21 @@
 
 	<PropertyGroup>
 		<TargetFramework>net6.0</TargetFramework>
-		<Authors>Cem YILMAZ</Authors>
-		<Company>Cem YILMAZ</Company>
-		<Version>1.0.6</Version>
-		<AssemblyVersion>1.0.0.5</AssemblyVersion>
+		<Authors>Tyler O'Brien</Authors>
+		<Company>Tyler O'Brien</Company>
+		<Version>1.1.0</Version>
+		<AssemblyVersion>1.1.0.0</AssemblyVersion>
 		<NeutralLanguage>en</NeutralLanguage>
 		<PackageTags>steam,query,net,steamquery,steamquerynet</PackageTags>
-		<FileVersion>1.0.0.5</FileVersion>
-		<PackageReleaseNotes>https://github.com/cyilcode/SteamQueryNet/CHANGELOG.md</PackageReleaseNotes>
-		<Description>
-			SteamQueryNet is a C# wrapper for Steam Server Queries UDP protocol. It is;
-
-			Light
-			Dependency free
-		</Description>
-		<Copyright />
-		<license>https://github.com/cyilcode/SteamQueryNet/blob/master/LICENSE</license>
-		<PackageProjectUrl>https://github.com/cyilcode/SteamQueryNet</PackageProjectUrl>
-		<PackageIconUrl>https://github.com/cyilcode/SteamQueryNet</PackageIconUrl>
-		<RepositoryUrl>https://github.com/cyilcode/SteamQueryNet</RepositoryUrl>
+		<FileVersion>1.1.0.0</FileVersion>
+		<PackageReleaseNotes>https://github.com/Tyler-OBrien/SteamQueryNet/blob/master/CHANGELOG.md</PackageReleaseNotes>
+		<Description>SteamQueryNet is a C# wrapper for Steam Server Queries UDP protocol.</Description>
+		<Summary>SteamQueryNet is a C# wrapper for Steam Server Queries UDP protocol.</Summary>
+		<PackageId>SteamQuery</PackageId>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<License>https://github.com/Tyler-OBrien/SteamQueryNet/blob/master/LICENSE</License>
+		<PackageProjectUrl>https://github.com/Tyler-OBrien/SteamQueryNet</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/Tyler-OBrien/SteamQueryNet</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<ApplicationIcon />
