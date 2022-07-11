@@ -1,35 +1,37 @@
-# Fork
+# Fork 
 
 
-Merges:
+### Merges:
 
-This fork merges Recieve/Send timeouts (https://github.com/cyilcode/SteamQueryNet/pull/9)
+* This fork merges Recieve/Send timeouts (https://github.com/cyilcode/SteamQueryNet/pull/9)
 
-Also merges a bunch of other minor changes (https://github.com/cyilcode/SteamQueryNet/pull/18), including:
+* Also merges a bunch of other minor changes (https://github.com/cyilcode/SteamQueryNet/pull/18), including:
 
-Adding support for cancellation tokens
+    * Adding support for cancellation tokens
 
-Moving to .NET 6
-
-
-This fork takes those two PRs, along with some other changes I made:
-
-Fixed all of the unit tests to work properly
-
-Support for A2S_Info Challenges (https://developer.valvesoftware.com/wiki/Server_queries#A2S_SERVERQUERY_GETCHALLENGE)
-
-Added integration tests against real servers
-
-Added overloads, making cancellation tokens unnecessary
-
-Default timeout is 2000 instead of 0 (and instantly failing)
+    * Moving to .NET 6
 
 
-Removals:
+### Other changes made:
 
-Removed Ping (unnecessary and sync)
+* Fixed all of the unit tests to work properly
 
-Removed The Ship Game Info / Player Details
+* Support for A2S_Info Challenges (GetServerInfo) (https://developer.valvesoftware.com/wiki/Server_queries#A2S_SERVERQUERY_GETCHALLENGE)
+
+* Fixed some issues with A2S_Player Challenges (GetPlayers) sometimes returning a corrupted player response, where it would return a list of 200-300 players with random properties if the challenge response failed
+
+* Added integration tests against real servers
+
+* Added overloads, making cancellation tokens unnecessary
+
+* Default timeout is 2000 instead of 0 (and instantly failing)
+
+
+### Removals:
+
+* Removed Ping Property from ServerInfo (unnecessary and sync)
+
+* Removed The Ship Game Info / Player Details
 
 
 
@@ -142,5 +144,3 @@ List<Player> players = serverQuery.GetPlayers();
 List<Rule> rules = serverQuery.GetRules();
 ```
 
-# Todos
-* Enable CI
