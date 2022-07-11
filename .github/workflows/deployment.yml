@@ -24,6 +24,6 @@ jobs:
     - name: Pack
       run: dotnet pack -c Release -o out SteamQueryNet
     - name: Push to NuGet
-      run: dotnet nuget push out\\*.nupkg
+      run: dotnet nuget push out/*.nupkg
              --api-key ${{ secrets.NUGET_TOKEN }}
              --source https://api.nuget.org/v3/index.json
