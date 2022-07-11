@@ -21,7 +21,6 @@ public class IntegrationTests
     [InlineData("216.52.148.47:27015")]
     [InlineData("66.55.142.18:27066")]
     [InlineData("109.205.180.203:33915")]
-    [InlineData("64.74.163.82:30265")]
     [InlineData("66.23.205.195:27086")]
     public async Task GetServerInfo(string trustedServer)
     {
