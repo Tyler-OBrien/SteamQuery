@@ -191,7 +191,7 @@ public class ServerQuery : IServerQuery, IDisposable
         {
 #if DEBUG
             Console.WriteLine(
-                $"[Warning] GetPlayersAsync returned {tryGetHeader} header after first request for challenge, instead of 0x41 Challenge Response");
+                $"[Warning] GetPlayersAsync returned {tryGetHeader} header after first request for challenge, instead of 0x41 Challenge Response, for {this.m_remoteIpEndpoint.ToString()}");
 #endif
             return null;
         }
@@ -212,7 +212,7 @@ public class ServerQuery : IServerQuery, IDisposable
         {
 #if DEBUG
             Console.WriteLine(
-                $"[Warning] GetPlayersAsync returned {tryGetHeader} header after challenge, instead of 0x44/D valid response.");
+                $"[Warning] GetPlayersAsync returned {tryGetHeader} header after challenge, instead of 0x44/D valid response, for {this.m_remoteIpEndpoint.ToString()}.");
 #endif
             return null;
         }
