@@ -11,9 +11,14 @@ internal sealed class PacketHeaders
     public const byte A2S_INFO_S2C_CHALLENGE = 0x41; // A
 
     public const byte A2S_PLAYER_S2C_CHALLENGE = 0x41; // A
+    public const byte A2S_RULES_S2C_CHALLENGE = 0x41; // A
 
 
     public const byte A2S_INFO_RESPONSE = 0x49; // I
 
     public const byte A2S_PLAYER_RESPONSE = 0x44; // D
+
+    public const byte A2S_RULES_RESPONSE = 0x45; // E
+
+
 }

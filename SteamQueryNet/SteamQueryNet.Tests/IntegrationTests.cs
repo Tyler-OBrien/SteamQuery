@@ -15,8 +15,6 @@ public class IntegrationTests
     [RetryTheory(3, 200)]
 
     // Randomly taken from popular servers of different games
-    [InlineData("54.37.111.217:27015")]
-    [InlineData("74.91.115.81:27015")]
     [InlineData("135.125.189.170:27015")]
     [InlineData("216.52.148.47:27015")]
     [InlineData("66.55.142.18:27066")]
@@ -33,10 +31,12 @@ public class IntegrationTests
 
             // Make sure that the server is still alive.
             Assert.True(sq.IsConnected);
+            var getRules = await sq.GetRulesAsync();
             var getPlayers = await sq.GetPlayersAsync();
             var getServerInfo = await sq.GetServerInfoAsync();
             Assert.NotNull(getServerInfo);
             Assert.NotNull(getPlayers);
+            Assert.NotNull(getRules);
             // Hacky, but there was issues with player deseralization where the GetPlayersAsync method would return a ton of fake players
             if (getServerInfo.MaxPlayers * 1.25 < getPlayers.Count)
                 Assert.False(getServerInfo.MaxPlayers < getPlayers.Count,

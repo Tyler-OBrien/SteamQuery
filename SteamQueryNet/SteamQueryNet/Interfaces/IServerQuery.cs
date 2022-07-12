@@ -8,24 +8,6 @@ namespace SteamQueryNet.Interfaces;
 #nullable enable
 public interface IServerQuery
 {
-    /// <summary>
-    ///     Renews the server challenge code of the ServerQuery instance in order to be able to execute further operations.
-    /// </summary>
-    /// <returns>The new created challenge.</returns>
-    int RenewChallenge();
-
-    /// <summary>
-    ///     Renews the server challenge code of the ServerQuery instance in order to be able to execute further operations.
-    /// </summary>
-    /// <returns>The new created challenge.</returns>
-    Task<int> RenewChallengeAsync();
-
-
-    /// <summary>
-    ///     Renews the server challenge code of the ServerQuery instance in order to be able to execute further operations.
-    /// </summary>
-    /// <returns>The new created challenge.</returns>
-    Task<int> RenewChallengeAsync(CancellationToken cancellationToken);
 
 
     /// <summary>

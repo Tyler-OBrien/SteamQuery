@@ -17,7 +17,6 @@ namespace SteamQueryNet;
 #nullable enable
 public class ServerQuery : IServerQuery, IDisposable
 {
-    private int m_currentChallenge;
 
     private ushort m_port;
     private IPEndPoint m_remoteIpEndpoint;
@@ -130,11 +129,16 @@ public class ServerQuery : IServerQuery, IDisposable
 
         var response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(), token);
         var tryGetHeader = response.Skip(4).First();
-        // A Challenge!
-        var retries = 0;
-        var MAX_RETRIES = 3;
-        // Retry for network issues or any other odd issue with challenges
-        while (tryGetHeader == PacketHeaders.A2S_PLAYER_S2C_CHALLENGE && MAX_RETRIES > retries)
+        if (tryGetHeader != PacketHeaders.A2S_INFO_S2C_CHALLENGE && tryGetHeader != PacketHeaders.A2S_INFO_RESPONSE)
+        {
+#if DEBUG
+            Console.WriteLine(
+                $"[Warning] GetServerInfoAsync returned {tryGetHeader} header after first request for challenge, instead of 0x41 Challenge Response or 0x49 Normal Response, for {m_remoteIpEndpoint.ToString()}");
+#endif
+            return null;
+        }
+
+        if (tryGetHeader == PacketHeaders.A2S_INFO_S2C_CHALLENGE)
         {
             var challenge = response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).ToArray();
             // Now we got the challenge! Send it back!
@@ -142,17 +146,17 @@ public class ServerQuery : IServerQuery, IDisposable
 
 
             tryGetHeader = response.Skip(4).First();
-#if DEBUG
-            if (tryGetHeader != PacketHeaders.A2S_INFO_RESPONSE)
-                Console.WriteLine(
-                    $"Something strange.. we expected 0x49 (I) aka 73 in decimal, but we got {tryGetHeader}");
-#endif
-            retries++;
         }
 
-        // Couldn't get response...
+
         if (tryGetHeader != PacketHeaders.A2S_INFO_RESPONSE)
+        {
+#if DEBUG
+            Console.WriteLine(
+                $"[Warning] GetServerInfoAsync returned {tryGetHeader} header after challenge, instead of 0x49/I valid response, for {m_remoteIpEndpoint.ToString()}.");
+#endif
             return null;
+        }
 
 
         if (response.Length > 0) DataResolutionUtils.ExtractData(sInfo, response, nameof(sInfo.EDF), true);
@@ -171,37 +175,6 @@ public class ServerQuery : IServerQuery, IDisposable
     }
 
 
-    /// <inheritdoc />
-    public Task<int> RenewChallengeAsync()
-    {
-        return RenewChallengeAsync(CancellationToken.None);
-    }
-
-
-    /// <inheritdoc />
-    public async Task<int> RenewChallengeAsync(CancellationToken cancellationToken)
-    {
-        var response = await SendRequestAsync(RequestHelpers.PrepareAS2_RENEW_CHALLENGE_Request(), cancellationToken);
-        if (response.Length > 0)
-            m_currentChallenge =
-                BitConverter.ToInt32(response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
-                    0);
-
-
-        return m_currentChallenge;
-    }
-
-
-    /// <inheritdoc />
-    public int RenewChallenge()
-    {
-        var task = RenewChallengeAsync(CancellationToken.None);
-        if (task.IsCompleted == false)
-            task.RunSynchronously();
-        return task.Result;
-        // return Helpers.RunSync(RenewChallengeAsync);
-    }
-
 
     /// <inheritdoc />
     public Task<List<Player>?> GetPlayersAsync()
@@ -218,29 +191,33 @@ public class ServerQuery : IServerQuery, IDisposable
             cancellationToken);
 
         var tryGetHeader = response.Skip(4).First();
-        var retries = 0;
-        var MAX_RETRIES = 3;
-        while (tryGetHeader == PacketHeaders.A2S_PLAYER_S2C_CHALLENGE && MAX_RETRIES > retries)
+
+        if (tryGetHeader != PacketHeaders.A2S_PLAYER_S2C_CHALLENGE)
         {
-            var challenge = BitConverter.ToInt32(
-                response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
-                0);
-
-            response = await SendRequestAsync(
-                RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_PLAYER, challenge),
-                cancellationToken);
-
-
-            tryGetHeader = response.Skip(4).First();
-            retries++;
+#if DEBUG
+            Console.WriteLine(
+                $"[Warning] GetPlayersAsync returned {tryGetHeader} header after first request for challenge, instead of 0x41 Challenge Response, for {this.m_remoteIpEndpoint.ToString()}");
+#endif
+            return null;
         }
+
+        var challenge = BitConverter.ToInt32(
+            response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
+            0);
+
+        response = await SendRequestAsync(
+            RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_PLAYER, challenge),
+            cancellationToken);
+
+
+        tryGetHeader = response.Skip(4).First();
 
 
         if (tryGetHeader != PacketHeaders.A2S_PLAYER_RESPONSE)
         {
 #if DEBUG
             Console.WriteLine(
-                $"[Warning] GetPlayersAsync returned {tryGetHeader} header after challenge, instead of 0x44/D valid response.");
+                $"[Warning] GetPlayersAsync returned {tryGetHeader} header after challenge, instead of 0x44/D valid response, for {this.m_remoteIpEndpoint.ToString()}.");
 #endif
             return null;
         }
@@ -270,11 +247,46 @@ public class ServerQuery : IServerQuery, IDisposable
     /// <inheritdoc />
     public async Task<List<Rule>?> GetRulesAsync(CancellationToken cancellationToken)
     {
-        if (m_currentChallenge == 0) await RenewChallengeAsync(cancellationToken);
 
         var response = await SendRequestAsync(
-            RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_RULES, m_currentChallenge),
+            RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_RULES, -1),
             cancellationToken);
+
+        var tryGetHeader = response.Skip(4).First();
+
+        if (tryGetHeader != PacketHeaders.A2S_RULES_S2C_CHALLENGE && tryGetHeader != PacketHeaders.A2S_RULES_RESPONSE)
+        {
+#if DEBUG
+            Console.WriteLine(
+                $"[Warning] GetRulesAsync returned {tryGetHeader} header after first request for challenge, instead of 0x41 Challenge Response, for {this.m_remoteIpEndpoint.ToString()}");
+#endif
+            return null;
+        }
+
+        if (tryGetHeader == PacketHeaders.A2S_RULES_S2C_CHALLENGE)
+        {
+            var challenge = BitConverter.ToInt32(
+                response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
+                0);
+
+            response = await SendRequestAsync(
+                RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_RULES, challenge),
+                cancellationToken);
+
+
+            tryGetHeader = response.Skip(4).First();
+        }
+
+
+        if (tryGetHeader != PacketHeaders.A2S_RULES_RESPONSE)
+        {
+#if DEBUG
+            Console.WriteLine(
+                $"[Warning] GetRulesAsync returned {tryGetHeader} header after challenge, instead of 0x45/E valid response, for {this.m_remoteIpEndpoint.ToString()}.");
+#endif
+            return null;
+        }
+
         if (response.Length > 0)
             return DataResolutionUtils.ExtractRulesData<Rule>(response);
         throw new InvalidOperationException("Server did not response the query");
