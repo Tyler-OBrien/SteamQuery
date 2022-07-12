@@ -168,15 +168,21 @@ internal sealed class DataResolutionUtils
         );
 
         // Skip +2 for item_count, because its short
-        var dataSource = rawSource.Skip(RESPONSE_HEADER_COUNT + sizeof(short));
+        var dataSource = rawSource.Skip(RESPONSE_HEADER_COUNT + sizeof(Int16));
 
-        for (byte i = 0; i < itemCount; i++)
+        if (dataSource.Any())
+            for (byte i = 0; i < itemCount; i++)
         {
             // Activate a new instance of the object.
             var objectInstance = Activator.CreateInstance<TObject>();
 
             // Extract the data.
             dataSource = ExtractData(objectInstance, dataSource.ToArray());
+
+            if (objectList.Count > itemCount)
+            {
+                throw new Exception("This shouldn't be longer then the item count");
+            }
 
             // Add it into the list.
             objectList.Add(objectInstance);
