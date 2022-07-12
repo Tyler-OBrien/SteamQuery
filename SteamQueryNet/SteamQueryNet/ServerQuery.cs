@@ -17,7 +17,6 @@ namespace SteamQueryNet;
 #nullable enable
 public class ServerQuery : IServerQuery, IDisposable
 {
-    private int m_currentChallenge;
 
     private ushort m_port;
     private IPEndPoint m_remoteIpEndpoint;
@@ -171,37 +170,6 @@ public class ServerQuery : IServerQuery, IDisposable
     }
 
 
-    /// <inheritdoc />
-    public Task<int> RenewChallengeAsync()
-    {
-        return RenewChallengeAsync(CancellationToken.None);
-    }
-
-
-    /// <inheritdoc />
-    public async Task<int> RenewChallengeAsync(CancellationToken cancellationToken)
-    {
-        var response = await SendRequestAsync(RequestHelpers.PrepareAS2_RENEW_CHALLENGE_Request(), cancellationToken);
-        if (response.Length > 0)
-            m_currentChallenge =
-                BitConverter.ToInt32(response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
-                    0);
-
-
-        return m_currentChallenge;
-    }
-
-
-    /// <inheritdoc />
-    public int RenewChallenge()
-    {
-        var task = RenewChallengeAsync(CancellationToken.None);
-        if (task.IsCompleted == false)
-            task.RunSynchronously();
-        return task.Result;
-        // return Helpers.RunSync(RenewChallengeAsync);
-    }
-
 
     /// <inheritdoc />
     public Task<List<Player>?> GetPlayersAsync()
@@ -218,22 +186,26 @@ public class ServerQuery : IServerQuery, IDisposable
             cancellationToken);
 
         var tryGetHeader = response.Skip(4).First();
-        var retries = 0;
-        var MAX_RETRIES = 3;
-        while (tryGetHeader == PacketHeaders.A2S_PLAYER_S2C_CHALLENGE && MAX_RETRIES > retries)
+
+        if (tryGetHeader != PacketHeaders.A2S_PLAYER_S2C_CHALLENGE)
         {
-            var challenge = BitConverter.ToInt32(
-                response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
-                0);
-
-            response = await SendRequestAsync(
-                RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_PLAYER, challenge),
-                cancellationToken);
-
-
-            tryGetHeader = response.Skip(4).First();
-            retries++;
+#if DEBUG
+            Console.WriteLine(
+                $"[Warning] GetPlayersAsync returned {tryGetHeader} header after first request for challenge, instead of 0x41 Challenge Response");
+#endif
+            return null;
         }
+
+        var challenge = BitConverter.ToInt32(
+            response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
+            0);
+
+        response = await SendRequestAsync(
+            RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_PLAYER, challenge),
+            cancellationToken);
+
+
+        tryGetHeader = response.Skip(4).First();
 
 
         if (tryGetHeader != PacketHeaders.A2S_PLAYER_RESPONSE)
@@ -270,10 +242,9 @@ public class ServerQuery : IServerQuery, IDisposable
     /// <inheritdoc />
     public async Task<List<Rule>?> GetRulesAsync(CancellationToken cancellationToken)
     {
-        if (m_currentChallenge == 0) await RenewChallengeAsync(cancellationToken);
 
         var response = await SendRequestAsync(
-            RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_RULES, m_currentChallenge),
+            RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_RULES, -1),
             cancellationToken);
         if (response.Length > 0)
             return DataResolutionUtils.ExtractRulesData<Rule>(response);
