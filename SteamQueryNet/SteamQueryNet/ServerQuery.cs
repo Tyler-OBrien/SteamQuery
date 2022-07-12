@@ -129,11 +129,16 @@ public class ServerQuery : IServerQuery, IDisposable
 
         var response = await SendRequestAsync(RequestHelpers.PrepareAS2_INFO_Request(), token);
         var tryGetHeader = response.Skip(4).First();
-        // A Challenge!
-        var retries = 0;
-        var MAX_RETRIES = 3;
-        // Retry for network issues or any other odd issue with challenges
-        while (tryGetHeader == PacketHeaders.A2S_PLAYER_S2C_CHALLENGE && MAX_RETRIES > retries)
+        if (tryGetHeader != PacketHeaders.A2S_INFO_S2C_CHALLENGE && tryGetHeader != PacketHeaders.A2S_INFO_RESPONSE)
+        {
+#if DEBUG
+            Console.WriteLine(
+                $"[Warning] GetServerInfoAsync returned {tryGetHeader} header after first request for challenge, instead of 0x41 Challenge Response or 0x49 Normal Response, for {m_remoteIpEndpoint.ToString()}");
+#endif
+            return null;
+        }
+
+        if (tryGetHeader == PacketHeaders.A2S_INFO_S2C_CHALLENGE)
         {
             var challenge = response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).ToArray();
             // Now we got the challenge! Send it back!
@@ -141,17 +146,17 @@ public class ServerQuery : IServerQuery, IDisposable
 
 
             tryGetHeader = response.Skip(4).First();
-#if DEBUG
-            if (tryGetHeader != PacketHeaders.A2S_INFO_RESPONSE)
-                Console.WriteLine(
-                    $"Something strange.. we expected 0x49 (I) aka 73 in decimal, but we got {tryGetHeader}");
-#endif
-            retries++;
         }
 
-        // Couldn't get response...
+
         if (tryGetHeader != PacketHeaders.A2S_INFO_RESPONSE)
+        {
+#if DEBUG
+            Console.WriteLine(
+                $"[Warning] GetServerInfoAsync returned {tryGetHeader} header after challenge, instead of 0x49/I valid response, for {m_remoteIpEndpoint.ToString()}.");
+#endif
             return null;
+        }
 
 
         if (response.Length > 0) DataResolutionUtils.ExtractData(sInfo, response, nameof(sInfo.EDF), true);
