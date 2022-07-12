@@ -254,7 +254,7 @@ public class ServerQuery : IServerQuery, IDisposable
 
         var tryGetHeader = response.Skip(4).First();
 
-        if (tryGetHeader != PacketHeaders.A2S_RULES_S2C_CHALLENGE)
+        if (tryGetHeader != PacketHeaders.A2S_RULES_S2C_CHALLENGE && tryGetHeader != PacketHeaders.A2S_RULES_RESPONSE)
         {
 #if DEBUG
             Console.WriteLine(
@@ -263,16 +263,19 @@ public class ServerQuery : IServerQuery, IDisposable
             return null;
         }
 
-        var challenge = BitConverter.ToInt32(
-            response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
-            0);
+        if (tryGetHeader == PacketHeaders.A2S_RULES_S2C_CHALLENGE)
+        {
+            var challenge = BitConverter.ToInt32(
+                response.Skip(DataResolutionUtils.RESPONSE_CODE_INDEX).Take(sizeof(int)).ToArray(),
+                0);
 
-        response = await SendRequestAsync(
-            RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_RULES, challenge),
-            cancellationToken);
+            response = await SendRequestAsync(
+                RequestHelpers.PrepareAS2_GENERIC_Request(PacketHeaders.A2S_RULES, challenge),
+                cancellationToken);
 
 
-        tryGetHeader = response.Skip(4).First();
+            tryGetHeader = response.Skip(4).First();
+        }
 
 
         if (tryGetHeader != PacketHeaders.A2S_RULES_RESPONSE)
