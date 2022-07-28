@@ -1,4 +1,5 @@
-# Fork 
+# Archived Fork 
+It was easier to adapt https://github.com/Florian2406/Okolni-Source-Query - https://github.com/Tyler-OBrien/Okolni-Source-Query-Pool  to support ASync, and for my specific use case, "Pooling", using a single UDP Socket to query many different servers. This library also had a few other minor issues with parsing that I didn't want to track down.
 
 
 ### Merges:
